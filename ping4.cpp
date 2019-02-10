@@ -75,7 +75,7 @@ static inline std::vector<std::pair<std::string, struct sockaddr_in>> hostres_v4
 	iaddr.ai_socktype = SOCK_RAW;
 	iaddr.ai_protocol = IPPROTO_ICMP;
 
-	if (int ret = getaddrinfo(hostname.data(), NULL, &iaddr, &result) != 0)
+	if (int ret = getaddrinfo(hostname.data(), NULL, &iaddr, &result); ret != 0)
 		throw std::runtime_error(std::string("getaddrinfo(): ") + gai_strerror(ret));
 
 	for (decltype(result) rp = result; rp != NULL; rp = rp->ai_next) {
