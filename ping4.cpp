@@ -128,5 +128,5 @@ int main(int argc, const char *argv[]) try {
 	die();
 
 } catch (exception &ex) {
-	cout << ex.what() << endl;
+	cerr << ex.what() << endl;
 }
