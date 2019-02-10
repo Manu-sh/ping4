@@ -90,7 +90,7 @@ static inline std::vector<std::pair<std::string, struct sockaddr_in>> hostres_v4
 }
 
 using namespace std;
-int main(int argc, const char *argv[]) {
+int main(int argc, const char *argv[]) try {
 
 	static int raw_sk;
 	const static uint16_t pkg_id = (uint16_t)getpid();
@@ -126,4 +126,7 @@ int main(int argc, const char *argv[]) {
 	}
 
 	die();
+
+} catch (exception &ex) {
+	cout << ex.what() << endl;
 }
