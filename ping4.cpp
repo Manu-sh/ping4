@@ -78,7 +78,7 @@ static inline std::vector<std::pair<std::string, struct sockaddr_in>> hostres_v4
 	if (int ret = getaddrinfo(hostname.data(), NULL, &iaddr, &result); ret != 0)
 		throw std::runtime_error(std::string("getaddrinfo(): ") + gai_strerror(ret));
 
-	for (decltype(result) rp = result; rp != NULL; rp = rp->ai_next) {
+	for (decltype(auto) rp = result; rp != NULL; rp = rp->ai_next) {
 		struct sockaddr_in *ipv4 = (struct sockaddr_in *)rp->ai_addr;
 		vct.emplace_back(std::make_pair(inet_ntoa(ipv4->sin_addr), *ipv4));
 	}
