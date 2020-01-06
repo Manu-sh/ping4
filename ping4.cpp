@@ -37,22 +37,23 @@ static inline float elapsed_ms(ping_time start) {
 static inline PINGV4 ping(uint16_t id) {
 
 	PINGV4 pkg;
-	static uint16_t seq;
+	static uint16_t seq; // sequence number
 
-	*((ping_time *)pkg.m_payload) = std::chrono::steady_clock::now();
+	*((ping_time *)pkg.m_payload) = std::chrono::steady_clock::now(); // set current timestamp as payload content
 	return pkg.set_type(ICMP_ECHO).set_id(id).set_sequence(++seq).set_checksum();
 }
 
 static inline void pong(const void *data, size_t length, uint16_t id) {
 
 	const struct IPV4HDR ip = *(IPV4HDR *)data;
-	if (length < sizeof(IPV4HDR) + sizeof(PINGV4))
+	if (length < sizeof(IPV4HDR) + sizeof(PINGV4)) // can't be a valid "frame"
 		return;
 
 	const int icmphdr_len = length - ip.get_header_length(); // avoid to malicious iphdr (icmphdr + payload)
  	if (icmphdr_len < (int)sizeof(PINGV4))
 		return;
 
+	// skip the ip header and access to the transported data (which in this case is ICMPV4 protocol)
 	PINGV4 &pkg = *(PINGV4 *)((uint8_t *)(data) + ip.get_header_length());
 	if (ip.get_protocol() != IPPROTO_ICMP || pkg.get_type() != ICMP_ECHOREPLY || pkg.get_id() != id)
 		return;
@@ -67,7 +68,7 @@ static inline void pong(const void *data, size_t length, uint16_t id) {
 
 static inline std::vector<std::pair<std::string, struct sockaddr_in>> hostres_v4(const std::string_view &hostname) {
 
-	std::vector<std::pair<std::string, struct sockaddr_in>> vct;
+	std::vector<std::pair<std::string, struct sockaddr_in>> vct; // pair<ip_string,address_struct>
 	struct addrinfo iaddr, *result;
 	memset(&iaddr, 0, sizeof(iaddr));
 
@@ -75,12 +76,13 @@ static inline std::vector<std::pair<std::string, struct sockaddr_in>> hostres_v4
 	iaddr.ai_socktype = SOCK_RAW;
 	iaddr.ai_protocol = IPPROTO_ICMP;
 
+	// get a list of address_struct for an hostname
 	if (int ret = getaddrinfo(hostname.data(), NULL, &iaddr, &result); ret != 0)
 		throw std::runtime_error(std::string("getaddrinfo(): ") + gai_strerror(ret));
 
 	for (decltype(auto) rp = result; rp != NULL; rp = rp->ai_next) {
 		struct sockaddr_in *ipv4 = (struct sockaddr_in *)rp->ai_addr;
-		vct.emplace_back(std::make_pair(inet_ntoa(ipv4->sin_addr), *ipv4));
+		vct.emplace_back(std::make_pair(inet_ntoa(ipv4->sin_addr) /* get the ip */, *ipv4 /* take a copy of address_struct */));
 	}
 
 	freeaddrinfo(result);
@@ -93,7 +95,7 @@ using namespace std;
 int main(int argc, const char *argv[]) try {
 
 	static int raw_sk;
-	const static uint16_t pkg_id = (uint16_t)getpid();
+	const static uint16_t pkg_id = (uint16_t)getpid(); // use the parent pid as package id for a sequence of packages
 	const static auto &die = []([[maybe_unused]] int sig = 0) {
 		cout << ANSI_RESET << endl; // cout << "\n\n[" << getpid() << "] terminated" << endl;
 		close(raw_sk);
@@ -114,7 +116,8 @@ int main(int argc, const char *argv[]) try {
 		case 0:
 			for (;; sleep(1)) {
 				PINGV4 pkg = ping(pkg_id);
-				sendto(raw_sk, &pkg, sizeof(pkg), 0, (struct sockaddr *)&vct[0].second, sizeof(struct sockaddr_in));
+				sendto(raw_sk, &pkg, sizeof(pkg), 0, (struct sockaddr *)&vct[0].second /* the address_struct (we trivially use only the first element) */, 
+						sizeof(struct sockaddr_in));
 			}
 			break;
 
